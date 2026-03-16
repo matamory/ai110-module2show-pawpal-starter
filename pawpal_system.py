@@ -16,31 +16,6 @@ import uuid
 
 @dataclass
 class Pet:
-    """
-    Represents a pet in the PawPal system, encapsulating its attributes and associated care tasks.
-
-    Attributes:
-        name (str): The name of the pet.
-        species (str): The species of the pet (e.g., dog, cat).
-        age (int): The age of the pet.
-        activity_level (str): The activity level of the pet ("low", "medium", "high"). Defaults to "medium".
-        health_notes (str): Notes regarding the pet's health. Defaults to an empty string.
-        tasks (list[Task]): A list of tasks associated with the pet.
-        pet_id (str): A unique identifier for the pet.
-
-    Methods:
-        update_health_notes(notes: str) -> None:
-            Appends new health notes to the existing health notes for the pet.
-
-        add_task(task: Task) -> None:
-            Adds a task to the pet's task list and assigns the pet's ID to the task.
-
-        remove_task(task_id: str) -> None:
-            Removes a task from the pet's task list by its task ID.
-
-        edit_task(
-            Finds a task by its ID and updates its details.
-    """
     name: str
     species: str
     age: int
@@ -86,6 +61,7 @@ class Task:
     category: str                           # e.g. "walk", "feeding", "medication"
     duration: int                           # in minutes
     priority: int                           # 1 (low) to 5 (high)
+    scheduled_time: Optional[str] = None    # e.g. "08:00" (24-hour HH:MM)
     due_today: bool = True
     completed: bool = False
     pet_id: Optional[str] = None            # links this task to a specific Pet
@@ -198,16 +174,111 @@ class Scheduler:
             bonus = self.ACTIVITY_BOOST if (boost_walks and task.category == "walk") else 0
             return task.priority + bonus
 
-        sorted_tasks = sorted(due, key=effective_priority, reverse=True)
+        sorted_tasks = self.sort_tasks(due, key_func=effective_priority, reverse=True)
         return self.fit_to_time_budget(sorted_tasks, owner.daily_time_budget)
 
     def sort_by_priority(self, tasks: list[Task]) -> list[Task]:
         """Return a new list of tasks sorted from highest to lowest priority."""
         return sorted(tasks, key=lambda t: t.priority, reverse=True)
 
+    def sort_tasks(
+        self,
+        tasks: list[Task],
+        key: str = "priority",
+        reverse: bool = False,
+        key_func=None,
+    ) -> list[Task]:
+        """
+        Sort tasks by a single key or by a provided key function.
+
+        Supported keys:
+        - "priority"  (default)
+        - "duration"
+        - "title"
+        """
+        if key_func is not None:
+            return sorted(tasks, key=key_func, reverse=reverse)
+
+        if key == "priority":
+            return sorted(tasks, key=lambda t: t.priority, reverse=reverse)
+        if key == "duration":
+            return sorted(tasks, key=lambda t: t.duration, reverse=reverse)
+        if key == "title":
+            return sorted(tasks, key=lambda t: t.title.lower(), reverse=reverse)
+
+        raise ValueError(f"Unsupported sort key '{key}'.")
+
     def filter_due_tasks(self, tasks: list[Task]) -> list[Task]:
         """Return only tasks that are due today and not yet completed."""
         return [t for t in tasks if t.due_today and not t.completed]
+
+    def filter_tasks(
+        self,
+        tasks: list[Task],
+        pet_id: Optional[str] = None,
+        status: Optional[str] = None,
+        due_today_only: bool = False,
+    ) -> list[Task]:
+        """
+        Filter tasks by pet and/or status.
+
+        Supported status values:
+        - "completed"
+        - "incomplete"
+        """
+        filtered = tasks
+
+        if pet_id is not None:
+            filtered = [t for t in filtered if t.pet_id == pet_id]
+
+        if status is not None:
+            if status == "completed":
+                filtered = [t for t in filtered if t.completed]
+            elif status == "incomplete":
+                filtered = [t for t in filtered if not t.completed]
+            else:
+                raise ValueError("status must be 'completed' or 'incomplete'.")
+
+        if due_today_only:
+            filtered = [t for t in filtered if t.due_today]
+
+        return filtered
+
+    def detect_time_conflicts(self, tasks: list[Task]) -> list[str]:
+        """
+        Lightweight conflict detection by exact scheduled_time match.
+        Returns warning messages and never raises for conflicts.
+
+        A conflict exists when 2+ due, incomplete tasks share the same time.
+        """
+        grouped: dict[str, list[Task]] = {}
+        for task in tasks:
+            if not task.scheduled_time:
+                continue
+            if task.completed or not task.due_today:
+                continue
+            grouped.setdefault(task.scheduled_time, []).append(task)
+
+        warnings: list[str] = []
+        for time_slot, slot_tasks in grouped.items():
+            if len(slot_tasks) < 2:
+                continue
+
+            pet_ids = {task.pet_id for task in slot_tasks}
+            conflict_scope = "same pet" if len(pet_ids) == 1 else "different pets"
+            titles = ", ".join(task.title for task in slot_tasks)
+            warnings.append(
+                f"⚠️ Conflict at {time_slot} ({conflict_scope}): {titles}"
+            )
+
+        return warnings
+
+    def format_conflict_warnings(self, tasks: list[Task]) -> str:
+        """Return a printable warning block for any detected time conflicts."""
+        warnings = self.detect_time_conflicts(tasks)
+        if not warnings:
+            return "No scheduling conflicts detected."
+        return "\n".join(warnings)
 
     def fit_to_time_budget(self, tasks: list[Task], minutes: int) -> list[Task]:
         """
