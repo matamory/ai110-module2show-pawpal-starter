@@ -19,14 +19,19 @@ class Pet:
     name: str
     species: str
     age: int
-    activity_level: str = "medium"         # "low", "medium", "high"
-    health_notes: str = ""
+    breed: Optional[str] = None
+    weight: Optional[float] = None          # in kg
+    activity_level: str = "medium"          # "low", "medium", "high"
+    medical_conditions: list[str] = field(default_factory=list)
+    allergies: list[str] = field(default_factory=list)
     tasks: list[Task] = field(default_factory=list)
     pet_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
-    def update_health_notes(self, notes: str) -> None:
-        """Append new health notes to existing notes."""
-        self.health_notes = (self.health_notes + "\n" + notes).strip()
+    def add_medical_condition(self, condition: str) -> None:
+        pass
+
+    def add_allergy(self, allergy: str) -> None:
+        pass
 
     def add_task(self, task: Task) -> None:
         """Add a task to this pet and stamp it with this pet's ID."""
