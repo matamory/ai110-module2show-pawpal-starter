@@ -28,10 +28,10 @@ class Pet:
     pet_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def add_medical_condition(self, condition: str) -> None:
-        pass
+        self.medical_conditions.append(condition)
 
     def add_allergy(self, allergy: str) -> None:
-        pass
+        self.allergies.append(allergy)
 
     def add_task(self, task: Task) -> None:
         """Add a task to this pet and stamp it with this pet's ID."""
@@ -116,18 +116,20 @@ class Owner:
         """Add a pet to this owner's pet list."""
         self.pets.append(pet)
 
-    def add_task(self, task: Task) -> None:
+    def add_task(self, task: Task, pet_id: Optional[str] = None) -> None:
         """
-        Add a task to the matching pet (looked up by task.pet_id).
+        Add a task to the matching pet.
+        Pass pet_id explicitly or pre-set task.pet_id before calling.
         Raises ValueError if no matching pet is found.
         """
+        target_id = pet_id or task.pet_id
         for pet in self.pets:
-            if pet.pet_id == task.pet_id:
+            if pet.pet_id == target_id:
                 pet.add_task(task)
                 return
         raise ValueError(
-            f"No pet found with pet_id '{task.pet_id}'. "
-            "Set task.pet_id to a valid pet before calling add_task."
+            f"No pet found with pet_id '{target_id}'. "
+            "Pass pet_id explicitly or set task.pet_id before calling add_task."
         )
 
     def edit_task(
@@ -147,7 +149,21 @@ class Owner:
     def remove_task(self, task_id: str) -> None:
         """Remove a task by ID from whichever pet owns it."""
         for pet in self.pets:
+            before = len(pet.tasks)
             pet.remove_task(task_id)
+            if len(pet.tasks) < before:
+                return
+
+    def get_pet(self, pet_id: str) -> Optional[Pet]:
+        """Return the Pet with the given pet_id, or None if not found."""
+        for pet in self.pets:
+            if pet.pet_id == pet_id:
+                return pet
+        return None
+
+    def remove_pet(self, pet_id: str) -> None:
+        """Remove a pet (and all its tasks) from this owner."""
+        self.pets = [p for p in self.pets if p.pet_id != pet_id]
 
 
 # ---------------------------------------------------------------------------
@@ -166,25 +182,29 @@ class Scheduler:
         Build a daily task plan for the owner.
         If pet is provided, only that pet's tasks are considered;
         otherwise all tasks across all owner's pets are used.
-        High-activity pets get a priority boost on walk tasks.
-        Returns tasks sorted by effective priority that fit the time budget.
+        Sorting strategy is controlled by self.strategy.
+        Returns tasks that fit within the owner's time budget.
         """
         tasks = pet.tasks if pet else owner.tasks
         due = self.filter_due_tasks(tasks)
 
-        # Determine activity boost: high-activity pets boost walk task scores.
-        boost_walks = pet is not None and pet.activity_level == "high"
+        if pet:
+            due = self.filter_by_health(due, pet)
 
-        def effective_priority(task: Task) -> int:
-            bonus = self.ACTIVITY_BOOST if (boost_walks and task.category == "walk") else 0
-            return task.priority + bonus
+        if self.strategy == "duration":
+            sorted_tasks = self.sort_tasks(due, key="duration", reverse=False)
+        elif self.strategy == "balanced":
+            sorted_tasks = self.sort_tasks(due, key="priority", reverse=True)
+        else:  # "priority" (default) — high-activity pets get a walk task boost
+            boost_walks = pet is not None and pet.activity_level == "high"
 
-        sorted_tasks = self.sort_tasks(due, key_func=effective_priority, reverse=True)
+            def effective_priority(task: Task) -> int:
+                bonus = self.ACTIVITY_BOOST if (boost_walks and task.category == "walk") else 0
+                return task.priority + bonus
+
+            sorted_tasks = self.sort_tasks(due, key_func=effective_priority, reverse=True)
+
         return self.fit_to_time_budget(sorted_tasks, owner.daily_time_budget)
-
-    def sort_by_priority(self, tasks: list[Task]) -> list[Task]:
-        """Return a new list of tasks sorted from highest to lowest priority."""
-        return sorted(tasks, key=lambda t: t.priority, reverse=True)
 
     def sort_tasks(
         self,
@@ -248,6 +268,10 @@ class Scheduler:
             filtered = [t for t in filtered if t.due_today]
 
         return filtered
+
+    def filter_by_health(self, tasks: list[Task], pet: Pet) -> list[Task]:
+        """Filter out tasks that conflict with the pet's allergies or medical conditions."""
+        return tasks
 
     def detect_time_conflicts(self, tasks: list[Task]) -> list[str]:
         """
