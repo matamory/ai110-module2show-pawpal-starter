@@ -1,6 +1,7 @@
 # PawPal+ Project Reflection
 
 ## 1. System Design
+Three core actions a user should be able to perform include being able to add a pet, add a care task, and add a constraint such as time available.  
 
 **a. Initial design**
 
