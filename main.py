@@ -3,12 +3,17 @@ from pawpal_system import Owner, Pet, Task, Scheduler
 # ── Setup ────────────────────────────────────────────────────────────────────
 
 owner = Owner("Jordan", daily_time_budget=90)
+owner1 = Owner("Yesenia", daily_time_budget=200)
+owner2 = Owner("Andres", daily_time_budget=60)
 
 mochi = Pet("Mochi", species="dog", age=3, activity_level="high")
 luna  = Pet("Luna",  species="cat", age=5, activity_level="low")
+levi = Pet("Levi",  species="dog", age=4, activity_level="medium")
 
 owner.add_pet(mochi)
 owner.add_pet(luna)
+owner1.add_pet(levi)
+owner2.add_pet(levi)
 
 # ── Tasks for Mochi (dog) ────────────────────────────────────────────────────
 
@@ -24,6 +29,14 @@ luna.add_task(Task("Wet food serving", category="feeding",    duration=5,  prior
 luna.add_task(Task("Brush coat",       category="grooming",   duration=15, priority=2, scheduled_time="19:00"))
 luna.add_task(Task("Vet follow-up",    category="medication", duration=10, priority=4, due_today=False, scheduled_time="08:00"))
 
+
+# ── Tasks for Mochi (dog) ────────────────────────────────────────────────────
+
+levi.add_task(Task("Tug",  category="enrichment", duration=30, priority=3, scheduled_time="18:30"))
+levi.add_task(Task("Morning walk",   category="walk",       duration=60, priority=5, scheduled_time="07:00"))
+mochi.add_task(Task("Lunch",      category="feeding",    duration=10, priority=5, scheduled_time="12:00"))
+
+
 # Mark one task complete to demonstrate status filtering.
 luna.tasks[0].mark_complete()
 
@@ -31,6 +44,14 @@ luna.tasks[0].mark_complete()
 
 scheduler = Scheduler()
 plan = scheduler.generate_plan(owner)
+
+
+
+scheduler1 = Scheduler()
+plan1 = scheduler.generate_plan(owner1)
+
+scheduler2 = Scheduler()
+plan2 = scheduler.generate_plan(owner2)
 
 # ── Print Today's Schedule ───────────────────────────────────────────────────
 
@@ -65,6 +86,9 @@ print("=" * 48)
 print("       ⚠️  Conflict Check")
 print("=" * 48)
 print(scheduler.format_conflict_warnings(owner.tasks))
+
+
+
 
 # ── Demo: Filtering + Sorting helpers ───────────────────────────────────────
 
@@ -111,3 +135,83 @@ for task in due_today_by_priority:
     print(f"  - {task.title} (priority {task.priority})")
 
 print("=" * 48)
+
+
+
+
+
+
+
+
+# ── Print Today's Schedule  owner 1───────────────────────────────────────────────────
+
+print("=" * 48)
+print("       🐾  PawPal+ — Today's Schedule")
+print("=" * 48)
+print(f"  Owner : {owner1.name}")
+print(f"  Pets  : {', '.join(p.name for p in owner1.pets)}")
+print(f"  Budget: {owner1.daily_time_budget} min available")
+print("-" * 48)
+
+for i, task in enumerate(plan1, start=1):
+    pet_name = next(
+        (p.name for p in owner1.pets if p.pet_id == task.pet_id), "Unknown"
+    )
+    print(
+        f"  {i}. [{pet_name}] {task.title:<22}"
+        f"  {task.duration:>3} min   priority {task.priority}/5"
+    )
+
+print("-" * 48)
+total = sum(t.duration for t in plan1)
+skipped = len(owner1.tasks) - len(plan1)
+print(f"  Total scheduled : {total} min")
+print(f"  Tasks skipped   : {skipped} (over budget or not due)")
+print("=" * 48)
+print()
+print(scheduler1.explain_plan(plan1))
+
+print()
+print("=" * 48)
+print("       ⚠️  Conflict Check")
+print("=" * 48)
+print(scheduler1.format_conflict_warnings(owner1.tasks))
+
+
+
+
+
+# ── Print Today's Schedule  owner 2───────────────────────────────────────────────────
+
+print("=" * 48)
+print("       🐾  PawPal+ — Today's Schedule")
+print("=" * 48)
+print(f"  Owner : {owner2.name}")
+print(f"  Pets  : {', '.join(p.name for p in owner2.pets)}")
+print(f"  Budget: {owner2.daily_time_budget} min available")
+print("-" * 48)
+
+for i, task in enumerate(plan2, start=1):
+    pet_name = next(
+        (p.name for p in owner2.pets if p.pet_id == task.pet_id), "Unknown"
+    )
+    print(
+        f"  {i}. [{pet_name}] {task.title:<22}"
+        f"  {task.duration:>3} min   priority {task.priority}/5"
+    )
+
+print("-" * 48)
+total = sum(t.duration for t in plan2)
+skipped = len(owner2.tasks) - len(plan2)
+print(f"  Total scheduled : {total} min")
+print(f"  Tasks skipped   : {skipped} (over budget or not due)")
+print("=" * 48)
+print()
+print(scheduler2.explain_plan(plan2))
+
+print()
+print("=" * 48)
+print("       ⚠️  Conflict Check")
+print("=" * 48)
+print(scheduler2.format_conflict_warnings(owner2.tasks))
+
