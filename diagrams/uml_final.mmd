@@ -1,0 +1,80 @@
+classDiagram
+    class Owner {
+        +String owner_id
+        +String name
+        +int daily_time_budget
+        +dict preferences
+        +List~Pet~ pets
+        +add_pet(pet)
+        +remove_pet(pet_id)
+        +get_pet(pet_id) Optional~Pet~
+        +add_task(task, pet_id)
+        +edit_task(task_id, title, duration, priority)
+        +remove_task(task_id)
+        +tasks() List~Task~
+    }
+
+    class Pet {
+        +String pet_id
+        +String name
+        +String species
+        +String breed
+        +int age
+        +float weight
+        +String activity_level
+        +int time_budget
+        +List~String~ medical_conditions
+        +List~String~ allergies
+        +List~Task~ tasks
+        +add_task(task)
+        +remove_task(task_id)
+        +edit_task(task_id, title, duration, priority)
+        +add_medical_condition(condition)
+        +add_allergy(allergy)
+    }
+
+    class Task {
+        +String task_id
+        +String title
+        +String category
+        +int duration
+        +int priority
+        +String scheduled_time
+        +String pet_id
+        +bool due_today
+        +bool completed
+        +int times_skipped
+        +String must_follow
+        +mark_complete()
+        +mark_incomplete()
+        +update_details(title, duration, priority)
+    }
+
+    class Scheduler {
+        +String strategy
+        +bool fairness
+        +int ACTIVITY_BOOST
+        +generate_plan(owner, pet) List~Task~
+        +sort_tasks(tasks, key, reverse, key_func) List~Task~
+        +filter_due_tasks(tasks) List~Task~
+        +filter_tasks(tasks, pet_id, status, due_today_only) List~Task~
+        +filter_by_health(tasks, pet) List~Task~
+        +detect_time_conflicts(tasks) List~String~
+        +resolve_conflicts(tasks) List~Task~
+        +record_skipped(plan, all_tasks)
+        +fit_to_time_budget(tasks, minutes, score_func) List~Task~
+        +format_conflict_warnings(tasks) String
+        +explain_plan(plan) String
+        -_preference_bonus(task, preferences) int
+        -_apply_pet_budgets(owner) List~Task~
+        -_fair_select(tasks, owner, score_func) List~Task~
+        -_enforce_ordering(plan) List~Task~
+        -_time_to_minutes(time_str) int
+    }
+
+    Owner "1" --> "0..*" Pet : owns
+    Pet "1" --> "0..*" Task : has
+    Task ..> Task : must_follow
+    Scheduler ..> Owner : uses
+    Scheduler ..> Pet : uses
+    Scheduler ..> Task : schedules
