@@ -1,0 +1,60 @@
+classDiagram
+    class Owner {
+        +String owner_id
+        +String name
+        +int daily_time_budget
+        +dict preferences
+        +List~Pet~ pets
+        +add_pet(pet)
+        +add_task(task)
+        +edit_task(task_id)
+        +remove_task(task_id)
+        +tasks() List~Task~
+    }
+
+    class Pet {
+        +String pet_id
+        +String name
+        +String species
+        +String breed
+        +int age
+        +float weight
+        +String activity_level
+        +List~String~ medical_conditions
+        +List~String~ allergies
+        +List~Task~ tasks
+        +add_task(task)
+        +remove_task(task_id)
+        +edit_task(task_id)
+        +add_medical_condition(condition)
+        +add_allergy(allergy)
+    }
+
+    class Task {
+        +String task_id
+        +String title
+        +String category
+        +int duration
+        +int priority
+        +String scheduled_time
+        +bool due_today
+        +bool completed
+        +mark_complete()
+        +mark_incomplete()
+        +update_details(title, duration, priority)
+    }
+
+    class Scheduler {
+        +String strategy
+        +generate_plan(owner, pet)
+        +sort_tasks(tasks, key, reverse)
+        +filter_due_tasks(tasks)
+        +filter_tasks(tasks)
+        +detect_time_conflicts(tasks)
+        +fit_to_time_budget(tasks, minutes)
+        +explain_plan(plan)
+    }
+
+    Owner "1" --> "0..*" Pet : owns
+    Pet "1" --> "0..*" Task : has
+    Scheduler ..> Owner : uses
