@@ -6,7 +6,9 @@ classDiagram
         +dict preferences
         +List~Pet~ pets
         +add_pet(pet)
-        +add_task(task)
+        +remove_pet(pet_id)
+        +get_pet(pet_id) Optional~Pet~
+        +add_task(task, pet_id)
         +edit_task(task_id)
         +remove_task(task_id)
         +tasks() List~Task~
@@ -50,6 +52,7 @@ classDiagram
         +sort_tasks(tasks, key, reverse)
         +filter_due_tasks(tasks)
         +filter_tasks(tasks)
+        +filter_by_health(tasks, pet)
         +detect_time_conflicts(tasks)
         +fit_to_time_budget(tasks, minutes)
         +explain_plan(plan)
@@ -58,3 +61,4 @@ classDiagram
     Owner "1" --> "0..*" Pet : owns
     Pet "1" --> "0..*" Task : has
     Scheduler ..> Owner : uses
+    Scheduler ..> Pet : uses
